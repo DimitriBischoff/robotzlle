@@ -10,9 +10,11 @@
 		margin: auto;
 		background: grey;
 		padding: 10px 30px;
-		text-align: center;
 	}
 	[list] {
+		display: flex;
+	}
+	[line] {
 		max-width: 300px;
 		overflow-x: auto;
 	}
@@ -20,12 +22,19 @@
 		width: 30px;
 		height: 30px;
 		overflow: hidden;
+		text-align: center;
 		background: silver;
 		display: inline-block;
 		border: 1px solid black;
 	}
 	[cell]:hover {
 		cursor: pointer;
+	}
+	[functions] {
+		margin-right: 10px;
+	}
+	[functions] [cell] {
+		display: block;
 	}
 	[condition="0"] {
 		background: silver;
@@ -53,6 +62,12 @@
 	[command="3"]::after {
 		content: ">";
 	}
+	[command="15"]::after {
+		content: "F"attr(value);
+	}
+	[cell][selected] {
+		border-color: yellow;
+	}
 	
 </style>
 
@@ -73,7 +88,14 @@
 			</div>
 		</div>
 		<div list>
-			<div cell ondrop="ui.drop(event)" ondragover="ui.dragOver(event)"></div>
+			<div functions>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' command=15 ></div>
+			</div>
+			<div algorithme>
+				<div line>
+					<div cell ondrop="ui.drop(event)" ondragover="ui.dragOver(event)"></div>
+				</div>
+			</div>
 		</div>
 		<button play onclick='ui.play(this)'>Play</button>
 		<button onclick='ui.reset()'>Reset</button>

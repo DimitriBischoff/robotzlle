@@ -63,7 +63,7 @@ class GameManager {
 		return this.states.executors[this.states.level];
 	}
 
-	start() {
+	async start() {
 		let fps = 1000 / 20;
 
 		this.setLevel(0);
@@ -73,6 +73,7 @@ class GameManager {
 			setTimeout(() => { loop(); }, fps);
 		};
 
+		await this.ui.ready;
 		loop();
 	}
 
@@ -88,7 +89,10 @@ class GameManager {
 			return;
 		}
 		
-		executor.exec();
+		if (executor.running) {
+			this.ui.selected(executor.function, executor.selected);
+			executor.exec();
+		}
 
 		// Draw
 		this.screen.resize(map.width * scale, map.height * scale);

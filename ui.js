@@ -24,9 +24,9 @@ class Ui {
 
 	constructor() {
 		this.templates = {};
-		this.init();
 		this.executor = null;
-		this.commandsDom = null;
+		this.lastSelected = null;
+		this.ready = new Promise(res => this.init(res));
 	}
 
 	async loadTemplate(url) {
@@ -34,12 +34,22 @@ class Ui {
 		return {head: html?.head.children, body: html?.body.children};
 	}
 
-	async init() {
+	async init(callback) {
 		window.ui = this;
 		let commandsTpl = new Template('templates/commands.html');
 		await commandsTpl.loaded;
 		commandsTpl.insert();
-		this.commandsDom = document.body.querySelector('[commands] [list]');
+		this.templates.commands = document.body.querySelector('[commands] [list]');
+		this.templates.algorithme = document.body.querySelector('[commands] [list] [algorithme]');
+		this.templates.functions = document.body.querySelector('[commands] [list] [functions]');
+
+		this.templates.cellCommand = document.body.querySelector('[commands] [list] [algorithme] [line] [cell]').cloneNode();
+		this.templates.lineAlgorithme = document.body.querySelector('[commands] [list] [algorithme] [line]').cloneNode();
+		this.templates.cellFunction = document.body.querySelector('[commands] [list] [functions] [cell]').cloneNode();
+
+		this.clear();
+		this.addFunction();
+		callback();
 	}
 
 	nextLevel(callback) {
@@ -52,16 +62,67 @@ class Ui {
 				callback();
 				button.setAttribute('hidden', '');
 				button.onclick = null;
-				Array.from(this.commandsDom.childNodes).forEach(f => { if (this.commandsDom.childNodes.length > 1) f.parentNode.removeChild(f) });
+
+				this.clear();
+				this.addFunction();
 			}
 		}
 	}
 
+	addFunction() {
+		let func = this.templates.cellFunction.cloneNode();
+		let line = this.templates.lineAlgorithme.cloneNode();
+
+		func.setAttribute('value', this.templates.functions.children.length);
+		line.appendChild(this.templates.cellCommand.cloneNode());
+
+		this.templates.functions.appendChild(func);
+		this.templates.algorithme.appendChild(line);
+	}
+
+	removeFunction(i) {
+		let func = this.templates.functions.children[i];
+		let line = this.templates.algorithme.children[i];
+		
+		func.parentNode.removeChild(func);
+		line.parentNode.removeChild(line);
+	}
+
+	clear() {
+		let length = this.templates.functions.children.length;
+		for (let i = 0; i < length; i++) {
+			this.removeFunction(0);
+		}
+		console.log('clear', this.templates.functions.children)
+	}
+
 	getCommands() {
-		let commands = Array.from(this.commandsDom.children).map(e => {
-			return e.getAttribute('condition') << 4 | e.getAttribute('command');
-		});
+		let commands = [];
+
+		for (let line of this.templates.algorithme.children) {
+			let lineCommands = [];
+
+			for (let cell of line.children) {
+				let command = cell.getAttribute('command');
+				let condition = cell.getAttribute('condition');
+
+				if (command == null) break;
+
+				lineCommands.push(condition << 4 | command);
+				if (command == 0x0f)
+					lineCommands.push(cell.getAttribute('value') |0);
+			}
+			commands.push(lineCommands);
+		}
 		return commands;
+	}
+
+	selected(f, i) {
+		if (this.lastSelected) {
+			this.lastSelected.removeAttribute('selected');
+		}
+		this.lastSelected = this.templates.algorithme.children[f].children[i];
+		this.lastSelected.setAttribute('selected', '');
 	}
 
 	play(e) {
@@ -79,12 +140,17 @@ class Ui {
 	reset() {
 		this.executor.init();
 		document.body.querySelector('button[play]').innerHTML = 'Play';
+		if (this.lastSelected) {
+			this.lastSelected.removeAttribute('selected');
+			this.lastSelected = null;
+		}
 	}
 
 	dragStart(ev) {
 		ev.dataTransfer.setData("text/plain", JSON.stringify({
 			condition: ev.target.getAttribute("condition"),
 			command: ev.target.getAttribute("command"),
+			value: ev.target.getAttribute("value"),
 		}));
 		ev.dataTransfer.dropEffect = "copy";
 	}
@@ -99,19 +165,18 @@ class Ui {
 		var data = JSON.parse(ev.dataTransfer.getData("text/plain"));
 		let target = ev.target;
 		let length = target.parentNode.children.length;
+		let lengthFunction = target.parentNode.parentNode.children.length;
 		let index = Array.from(target.parentNode.children).indexOf(target);
+		let indexFunction = Array.from(target.parentNode.parentNode.children).indexOf(target.parentNode);
 
-		if (index == length -1) {
-			let node = target.cloneNode();
-			node.value = 0;
-			target.parentNode.appendChild(node);
-			Array.from(target.parentNode.childNodes).forEach(f => { if (f.nodeType == 3) f.parentNode.removeChild(f) });
-		}
+		if (index == length - 1)
+			target.parentNode.appendChild(this.templates.cellCommand.cloneNode());
+		if (indexFunction == lengthFunction - 1)
+			this.addFunction();
 
-		if (data.condition)
-			ev.target.setAttribute("condition", data.condition);
-		if (data.command)
-			ev.target.setAttribute("command", data.command);
+		for (let attr in data)
+			if (data[attr])
+				ev.target.setAttribute(attr, data[attr]);
 	}
 }
 
