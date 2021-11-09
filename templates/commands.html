@@ -1,0 +1,82 @@
+<style>
+	[ui-bottom] {
+		bottom: 0;
+		width: 100vw;
+		display: flex;
+		padding: 10px 0;
+		position: absolute;
+	}
+	[commands] {
+		margin: auto;
+		background: grey;
+		padding: 10px 30px;
+		text-align: center;
+	}
+	[list] {
+		max-width: 300px;
+		overflow-x: auto;
+	}
+	[cell] {
+		width: 30px;
+		height: 30px;
+		overflow: hidden;
+		background: silver;
+		display: inline-block;
+		border: 1px solid black;
+	}
+	[cell]:hover {
+		cursor: pointer;
+	}
+	[condition="0"] {
+		background: silver;
+	}
+	[condition="1"] {
+		background: #0000ff;
+	}
+	[condition="2"] {
+		background: #00ff00;
+	}
+	[condition="3"] {
+		background: #ff0000;
+	}
+
+	[command]::after {
+		font-size: 20px;
+		font-weight: bold;
+	}
+	[command="1"]::after {
+		content: "^";
+	}
+	[command="2"]::after {
+		content: "<";
+	}
+	[command="3"]::after {
+		content: ">";
+	}
+	
+</style>
+
+<div ui-bottom>
+	<div commands>
+		<div tools>
+			<div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' condition=0 ></div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' condition=1 ></div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' condition=2 ></div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' condition=3 ></div>
+			</div>
+			<div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' command=0 ></div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' command=1 ></div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' command=2 ></div>
+				<div cell draggable="true" ondragstart='ui.dragStart(event)' command=3 ></div>
+			</div>
+		</div>
+		<div list>
+			<div cell ondrop="ui.drop(event)" ondragover="ui.dragOver(event)"></div>
+		</div>
+		<button play onclick='ui.play(this)'>Play</button>
+		<button onclick='ui.reset()'>Reset</button>
+		<button id="nextLevel" hidden>Next</button>
+	</div>
+</div>
