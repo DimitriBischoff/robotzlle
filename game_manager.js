@@ -64,7 +64,7 @@ class GameManager {
 	}
 
 	async start() {
-		let fps = 1000 / 20;
+		let fps = 1000 / 3;
 
 		this.setLevel(0);
 
@@ -82,16 +82,24 @@ class GameManager {
 		let map = this.maps[this.states.level];
 		let executor = this.current();
 
-		if (executor.finish) {
-			ui.nextLevel(() => {
-				this.nextLevel();
-			})
-			return;
-		}
-		
 		if (executor.running) {
-			this.ui.selected(executor.function, executor.selected);
-			executor.exec();
+			if (executor.win) {
+				console.log('gagner');
+				ui.nextLevel(() => {
+					this.nextLevel();
+				})
+				executor.stop();
+			}
+			else if (executor.out) {
+				console.log('out');
+				executor.stop();
+			}
+			else {
+				for (let pointer of executor.pointers) {
+					this.ui.selected(pointer.state.function, pointer.state.selected);
+				}
+				executor.exec();
+			}
 		}
 
 		// Draw

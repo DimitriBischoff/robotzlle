@@ -93,7 +93,6 @@ class Ui {
 		for (let i = 0; i < length; i++) {
 			this.removeFunction(0);
 		}
-		console.log('clear', this.templates.functions.children)
 	}
 
 	getCommands() {
@@ -121,19 +120,23 @@ class Ui {
 		if (this.lastSelected) {
 			this.lastSelected.removeAttribute('selected');
 		}
-		this.lastSelected = this.templates.algorithme.children[f].children[i];
-		this.lastSelected.setAttribute('selected', '');
+		if (f < this.templates.algorithme.children.length
+			&& i < this.templates.algorithme.children[f].children.length) {
+			this.lastSelected = this.templates.algorithme.children[f].children[i];
+			this.lastSelected.setAttribute('selected', '');
+		}
 	}
 
 	play(e) {
 		if (this.executor.running) {
-			e.innerHTML = 'Play';
 			this.executor.stop();
+			e.innerHTML = 'Play';
 		}
 		else {
 			this.executor.setCommands(this.getCommands());
-			e.innerHTML = 'Pause';
 			this.executor.play();
+			if (this.executor.running)
+				e.innerHTML = 'Pause';
 		}
 	}
 

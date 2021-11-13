@@ -9,35 +9,68 @@ class Rules {
 		Rules.forward,
 		Rules.turnLeft,
 		Rules.turnRight,
-		Rules.call,
+		null, null, null, null, null, null, null, null, null, null, null,
+		Rules.call
 	];
 
-	static forward(pointer, map) {
+	static forward(commands, pointer, map) {
 		[
 			() => { pointer.x++ },
 			() => { pointer.y++ },
 			() => { pointer.x-- },
 			() => { pointer.y-- },
 		][pointer.d]?.();
-		console.log(pointer)
 	}
 
-	static turnLeft(pointer, map) {
+	static turnLeft(commands, pointer, map) {
 		pointer.d = (4 + pointer.d - 1) % 4;
 	}
 
-	static turnRight(pointer, map) {
+	static turnRight(commands, pointer, map) {
 		pointer.d = (pointer.d + 1) % 4;
 	}
 
-	static exec(command, pointer, map) {
-		let color = (0xf0 & command) >> 4;
-		let run = (0x0f & command);
-		let colorPosition = map.get(pointer.x, pointer.y, Map.masks.color);
-
-		if (!color || color == colorPosition) {
-			Rules.commands[run]?.(pointer, map);
+	static call(commands, pointer, map) {
+		pointer.stack.push({
+			function: pointer.state.function,
+			iterator: pointer.state.iterator + 1,
+			selected: pointer.state.selected
+		});
+		pointer.state = {
+			function: commands[pointer.state.function][pointer.state.iterator + 1],
+			iterator: -1,
+			selected: -1
 		}
+	}
+
+	static exec(commands, pointer, map) {
+		if (pointer.end) return;
+
+		if (pointer.state.iterator >= commands[pointer.state.function]?.length) {
+			if (pointer.stack.length) {
+				pointer.state = pointer.stack.pop();
+			}
+			else {
+				pointer.end = true;
+				return;
+			}
+		}
+		else {
+			let command = commands[pointer.state.function][pointer.state.iterator];
+			let color = (0xf0 & command) >> 4;
+			let run = (0x0f & command);
+			let colorPosition = map.get(pointer.x, pointer.y, Map.masks.color);
+
+			if (!color || color == colorPosition) {
+				Rules.commands[run]?.(commands, pointer, map);
+			}
+			else if (run == 0x0f) {
+				pointer.state.iterator++;
+			}
+		}
+
+		pointer.state.iterator++;
+		pointer.state.selected++;
 	}
 }
 
@@ -48,11 +81,7 @@ class Executor {
 		this.currentStates = null;
 		this.map = map;
 		this.commands = [];
-		this.function = 0;
-		this.iterator = 0;
-		this.selected = 0;
 		this.running = false;
-		this.end = false;
 		this.count = 0;
 
 		this.init();
@@ -66,16 +95,12 @@ class Executor {
 		return this.currentStates.points;
 	}
 
-	get command() {
-		if (!this.commands[this.function]?.length) {
-			this.end = true;
-			return null;
-		}
-		return this.commands[this.function][this.iterator];
+	get win() {
+		return this.points.length == 0;
 	}
 
-	get finish() {
-		return this.points.length == 0 || this.pointers.some(p => !this.map.get(p.x, p.y));
+	get out() {
+		return this.pointers.some(p => !this.map.get(p.x, p.y));
 	}
 
 	setCommands(commands) {
@@ -85,31 +110,22 @@ class Executor {
 
 	init() {
 		this.currentStates = deepCopy(this.initStates);
+		for (let pointer of this.pointers) {
+			pointer.state = {
+				function: 0,
+				iterator: 0,
+				selected: 0
+			};
+			pointer.stack = [];
+			pointer.end = false;
+		}
 		this.running = false;
-		this.iterator = 0;
-		this.function = 0;
-		this.selected = 0;
-		this.end = false;
 		this.count = 0;
 	}
 
-	next() {
-		if (this.commands[this.function]?.length && this.iterator < this.commands[this.function]?.length - 1) {
-			this.iterator++;
-			this.selected++;
-		}
-		else
-			this.end = true;
-	}
-
-	changeFunction(i) {
-		this.function = i;
-		this.iterator = 0;
-		this.selected = 0;
-	}
-
 	play() {
-		this.running = true;
+		if (this.commands.length && this.commands[0].length)
+			this.running = true;
 	}
 
 	stop() {
@@ -117,33 +133,10 @@ class Executor {
 	}
 
 	exec() {
-		if (!this.running || this.finish || this.end || !this.commands[this.function]?.length || this.commands[this.function]?.every(c => !(c & 0x0f))) {
-			this.stop();
-			return
-		}
-		
-		let currentCommand = this.command;
-		while (!currentCommand) {
-			this.next();
-			currentCommand = this.command;
-			if (this.end)
-				return;
-		}
-
-		if (currentCommand == 0x0f) {
-			this.next();
-			if (!this.end) {
-				this.selected--;
-				this.changeFunction(this.command);
-			}
-		}
-		else {
-			this.pointers.forEach(pointer => {
-				Rules.exec(currentCommand, pointer, this.map);
-				this.currentStates.points = this.points.filter(point => !(point.x == pointer.x && point.y == pointer.y));
-			});
-			this.next();
-		}
+		this.pointers.forEach(pointer => {
+			Rules.exec(this.commands, pointer, this.map);
+			this.currentStates.points = this.points.filter(point => !(point.x == pointer.x && point.y == pointer.y));
+		});
 	}
 }
 
